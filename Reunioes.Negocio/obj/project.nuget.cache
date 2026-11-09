@@ -1,0 +1,42 @@
+{
+  "version": 2,
+  "dgSpecHash": "o9/Tm8xv9T0=",
+  "success": false,
+  "projectFilePath": "C:\\Users\\Kendy\\Documents\\ChatGPT\\projeto pds\\Reunioes.Negocio\\Reunioes.Negocio.csproj",
+  "expectedPackageFiles": [],
+  "logs": [
+    {
+      "code": "NU1100",
+      "level": "Error",
+      "message": "Não foi possível resolver 'Microsoft.NETCore.App.Ref (= 8.0.31)' para 'net8.0'.",
+      "projectPath": "C:\\Users\\Kendy\\Documents\\ChatGPT\\projeto pds\\Reunioes.Negocio\\Reunioes.Negocio.csproj",
+      "filePath": "C:\\Users\\Kendy\\Documents\\ChatGPT\\projeto pds\\Reunioes.Negocio\\Reunioes.Negocio.csproj",
+      "libraryId": "Microsoft.NETCore.App.Ref",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1100",
+      "level": "Error",
+      "message": "Não foi possível resolver 'Microsoft.WindowsDesktop.App.Ref (= 8.0.31)' para 'net8.0'.",
+      "projectPath": "C:\\Users\\Kendy\\Documents\\ChatGPT\\projeto pds\\Reunioes.Negocio\\Reunioes.Negocio.csproj",
+      "filePath": "C:\\Users\\Kendy\\Documents\\ChatGPT\\projeto pds\\Reunioes.Negocio\\Reunioes.Negocio.csproj",
+      "libraryId": "Microsoft.WindowsDesktop.App.Ref",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    },
+    {
+      "code": "NU1100",
+      "level": "Error",
+      "message": "Não foi possível resolver 'Microsoft.AspNetCore.App.Ref (= 8.0.31)' para 'net8.0'.",
+      "projectPath": "C:\\Users\\Kendy\\Documents\\ChatGPT\\projeto pds\\Reunioes.Negocio\\Reunioes.Negocio.csproj",
+      "filePath": "C:\\Users\\Kendy\\Documents\\ChatGPT\\projeto pds\\Reunioes.Negocio\\Reunioes.Negocio.csproj",
+      "libraryId": "Microsoft.AspNetCore.App.Ref",
+      "targetGraphs": [
+        "net8.0"
+      ]
+    }
+  ]
+}

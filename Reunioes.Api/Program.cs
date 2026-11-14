@@ -1,5 +1,7 @@
 using Microsoft.EntityFrameworkCore;
+using Reunioes.Api.Endpoints;
 using Reunioes.Dados.Context;
+using Reunioes.Negocio.Servicos;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -21,6 +23,8 @@ builder.Services.AddDbContext<ReunioesDbContext>(options =>
             $"Provedor de banco de dados '{databaseProvider}' não suportado. Use SQLite ou PostgreSQL.");
 });
 
+builder.Services.AddScoped<ReservationService>();
+
 var app = builder.Build();
 
 if (app.Environment.IsDevelopment())
@@ -30,5 +34,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.MapReservationEndpoints();
 
 app.Run();

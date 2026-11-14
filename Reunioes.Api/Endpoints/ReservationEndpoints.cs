@@ -14,31 +14,61 @@ public static class ReservationEndpoints
             CancellationToken cancellationToken) =>
         {
             var result = await service.CreateAsync(request, cancellationToken);
-
-            if (result.IsSuccess)
-                return Results.Created((string?)null, result.Value);
-
-            return result.Error switch
-            {
-                OperationError.Validation => Results.Problem(
-                    title: "Dados inválidos",
-                    detail: result.Message,
-                    statusCode: StatusCodes.Status400BadRequest),
-                OperationError.NotFound => Results.Problem(
-                    title: "Sala não encontrada",
-                    detail: result.Message,
-                    statusCode: StatusCodes.Status404NotFound),
-                OperationError.Conflict => Results.Problem(
-                    title: "Conflito de reserva",
-                    detail: result.Message,
-                    statusCode: StatusCodes.Status409Conflict),
-                _ => Results.Problem(statusCode: StatusCodes.Status500InternalServerError)
-            };
+            return result.IsSuccess
+                ? (IResult)Results.Created((string?)null, result.Value)
+                : MapError(result.Error, result.Message);
         })
         .WithName("CreateReservation")
         .WithTags("Reservas")
         .WithSummary("Cria uma reserva para uma sala.");
 
+        endpoints.MapPut("/api/reservations/{reservationId:guid}", async (
+            Guid reservationId,
+            RescheduleReservationRequest request,
+            ReservationService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.RescheduleAsync(reservationId, request, cancellationToken);
+            return result.IsSuccess
+                ? (IResult)Results.Ok(result.Value)
+                : MapError(result.Error, result.Message);
+        })
+        .WithName("RescheduleReservation")
+        .WithTags("Reservas")
+        .WithSummary("Reagenda uma reserva futura.");
+
+        endpoints.MapDelete("/api/reservations/{reservationId:guid}", async (
+            Guid reservationId,
+            ReservationService service,
+            CancellationToken cancellationToken) =>
+        {
+            var result = await service.CancelAsync(reservationId, cancellationToken);
+            return result.IsSuccess
+                ? (IResult)Results.Ok(result.Value)
+                : MapError(result.Error, result.Message);
+        })
+        .WithName("CancelReservation")
+        .WithTags("Reservas")
+        .WithSummary("Cancela uma reserva existente.");
+
         return endpoints;
     }
+
+    private static IResult MapError(OperationError? error, string? message) =>
+        error switch
+        {
+            OperationError.Validation => Results.Problem(
+                title: "Dados ou regra de negócio inválidos",
+                detail: message,
+                statusCode: StatusCodes.Status400BadRequest),
+            OperationError.NotFound => Results.Problem(
+                title: "Reserva ou sala não encontrada",
+                detail: message,
+                statusCode: StatusCodes.Status404NotFound),
+            OperationError.Conflict => Results.Problem(
+                title: "Conflito de reserva",
+                detail: message,
+                statusCode: StatusCodes.Status409Conflict),
+            _ => Results.Problem(statusCode: StatusCodes.Status500InternalServerError)
+        };
 }

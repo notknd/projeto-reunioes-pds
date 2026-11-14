@@ -1,13 +1,28 @@
+using Microsoft.EntityFrameworkCore;
+using Reunioes.Dados.Context;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+var databaseProvider = builder.Configuration["Database:Provider"] ?? "SQLite";
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
+    ?? "Data Source=reunioes.db";
+
+builder.Services.AddDbContext<ReunioesDbContext>(options =>
+{
+    if (databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
+        options.UseNpgsql(connectionString);
+    else if (databaseProvider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
+        options.UseSqlite(connectionString);
+    else
+        throw new InvalidOperationException(
+            $"Provedor de banco de dados '{databaseProvider}' não suportado. Use SQLite ou PostgreSQL.");
+});
+
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -16,29 +31,4 @@ if (app.Environment.IsDevelopment())
 
 app.UseHttpsRedirection();
 
-var summaries = new[]
-{
-    "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-};
-
-app.MapGet("/weatherforecast", () =>
-{
-    var forecast =  Enumerable.Range(1, 5).Select(index =>
-        new WeatherForecast
-        (
-            DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-            Random.Shared.Next(-20, 55),
-            summaries[Random.Shared.Next(summaries.Length)]
-        ))
-        .ToArray();
-    return forecast;
-})
-.WithName("GetWeatherForecast")
-.WithOpenApi();
-
 app.Run();
-
-record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
-{
-    public int TemperatureF => 32 + (int)(TemperatureC / 0.5556);
-}

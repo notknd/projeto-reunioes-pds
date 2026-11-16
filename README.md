@@ -10,18 +10,7 @@ API em .NET 8 para gerenciar salas e reservas. A aplicação usa SQL parametriza
 
 Os repositórios abrem conexões e usam parâmetros para enviar valores ao banco. A criação e o reagendamento verificam conflitos e gravam a alteração dentro de uma transação.
 
-## Executar localmente
-
-Requisito: .NET 8 SDK. Não é necessário instalar ou iniciar um servidor de banco de dados.
-
-```bash
-dotnet restore .\Reunioes.slnx
-dotnet run --project .\Reunioes.Api\Reunioes.Api.csproj --launch-profile http
-```
-
-Abra `http://localhost:5100/swagger` para consultar e executar os endpoints. O SQLite cria o arquivo `reunioes.db` automaticamente ao iniciar a API.
-
-A documentação Swagger fica disponível em `/swagger` no ambiente de desenvolvimento.
+O swagger é uma forma simples para consultar e executar os endpoints. O SQLite cria o arquivo `reunioes.db` automaticamente ao iniciar a API.
 
 ## Endpoints
 
@@ -45,7 +34,7 @@ A documentação Swagger fica disponível em `/swagger` no ambiente de desenvolv
 | `DELETE /api/reservations/{reservationId}` | Cancela uma reserva. |
 | `GET /api/metrics/reservations/last-7-days` | Conta reservas criadas nos últimos sete dias; o intervalo retornado usa UTC. |
 
-Exemplo de criação (substitua `roomId` pelo identificador retornado ao criar a sala):
+Exemplo:
 
 ```json
 {
@@ -55,6 +44,6 @@ Exemplo de criação (substitua `roomId` pelo identificador retornado ao criar a
 }
 ```
 
-As reservas precisam começar depois das 08:00 e terminar antes das 19:00, no mesmo dia. Horários adjacentes são aceitos; sobreposição na mesma sala retorna `409 Conflict`. Erros de validação retornam `400 Bad Request` e recursos inexistentes retornam `404 Not Found`.
+As reservas precisam começar depois das 08:00 e terminar antes das 19:00, no mesmo dia. Horários próximos são aceitos; sobreposição na mesma sala retorna `409 Conflict`. Erros de validação retornam `400 Bad Request` e recursos inexistentes retornam `404 Not Found`.
 
-O banco é criado automaticamente ao iniciar a API. `schema.sql` contém o script de criação das tabelas SQLite.
+O banco é criado automaticamente ao iniciar a API

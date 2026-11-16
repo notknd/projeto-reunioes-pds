@@ -9,11 +9,10 @@ public abstract class RoomRequest
     public string? Name { get; set; }
 
     [Required(ErrorMessage = "O andar é obrigatório.")]
-    [Range(0, 200, ErrorMessage = "O andar deve estar entre 0 e 200.")]
     public int? Floor { get; set; }
 
     [Required(ErrorMessage = "A quantidade de assentos é obrigatória.")]
-    [Range(1, 500, ErrorMessage = "A quantidade de assentos deve ser maior que zero.")]
+    [Range(1, int.MaxValue, ErrorMessage = "A quantidade de assentos deve ser maior que zero.")]
     public int? Capacity { get; set; }
 }
 
@@ -21,3 +20,19 @@ public sealed class CreateRoomRequest : RoomRequest { }
 public sealed class UpdateRoomRequest : RoomRequest { }
 
 public sealed record RoomResponse(Guid Id, string Name, int Floor, int Capacity);
+
+public sealed record RoomListResponse(
+    IReadOnlyList<RoomResponse> Items,
+    int Page,
+    int PageSize,
+    int TotalCount,
+    int TotalPages);
+
+public sealed record RoomAvailabilityResponse(
+    Guid RoomId,
+    string RoomName,
+    DateOnly StartDate,
+    DateOnly EndDate,
+    decimal FreeHours);
+
+public sealed record RecentReservationsResponse(DateTime From, DateTime To, int TotalCount);

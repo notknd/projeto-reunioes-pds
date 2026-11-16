@@ -1,2 +1,5 @@
 <Solution>
+  <Project Path="Reunioes.Api/Reunioes.Api.csproj" />
+  <Project Path="Reunioes.Negocio/Reunioes.Negocio.csproj" />
+  <Project Path="Reunioes.Dados/Reunioes.Dados.csproj" />
 </Solution>

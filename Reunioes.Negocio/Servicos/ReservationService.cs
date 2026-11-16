@@ -1,13 +1,13 @@
-using Microsoft.EntityFrameworkCore;
-using Reunioes.Dados.Context;
+using System.ComponentModel.DataAnnotations;
 using Reunioes.Dados.Entidades;
+using Reunioes.Dados.Repositorios;
 using Reunioes.Negocio.DTOs;
 using Reunioes.Negocio.Resultados;
 using Reunioes.Negocio.Validacoes;
 
 namespace Reunioes.Negocio.Servicos;
 
-public sealed class ReservationService(ReunioesDbContext context)
+public sealed class ReservationService(ReservationRepository reservationRepository)
 {
     private static readonly TimeSpan OpeningTime = new(8, 0, 0);
     private static readonly TimeSpan ClosingTime = new(19, 0, 0);
@@ -23,21 +23,13 @@ public sealed class ReservationService(ReunioesDbContext context)
         var roomId = request.RoomId!.Value;
         var startTime = request.StartTime!.Value;
         var endTime = request.EndTime!.Value;
-
         var intervalError = ValidateInterval(startTime, endTime);
         if (intervalError is not null)
             return OperationResult<ReservationResponse>.Failure(OperationError.Validation, intervalError);
 
-        var roomExists = await context.Rooms
-            .AnyAsync(room => room.Id == roomId, cancellationToken);
-        if (!roomExists)
+        if (!await reservationRepository.RoomExistsAsync(roomId, cancellationToken))
             return OperationResult<ReservationResponse>.Failure(
                 OperationError.NotFound, "A sala informada não foi encontrada.");
-
-        var hasConflict = await HasConflictAsync(roomId, startTime, endTime, cancellationToken);
-        if (hasConflict)
-            return OperationResult<ReservationResponse>.Failure(
-                OperationError.Conflict, "Já existe uma reserva sobreposta para esta sala.");
 
         var reservation = new Reservation
         {
@@ -47,8 +39,9 @@ public sealed class ReservationService(ReunioesDbContext context)
             CreatedAt = DateTime.UtcNow
         };
 
-        context.Reservations.Add(reservation);
-        await context.SaveChangesAsync(cancellationToken);
+        if (!await reservationRepository.CreateIfAvailableAsync(reservation, cancellationToken))
+            return OperationResult<ReservationResponse>.Failure(
+                OperationError.Conflict, "Já existe uma reserva sobreposta para esta sala.");
 
         return OperationResult<ReservationResponse>.Success(ToResponse(reservation));
     }
@@ -58,8 +51,7 @@ public sealed class ReservationService(ReunioesDbContext context)
         RescheduleReservationRequest request,
         CancellationToken cancellationToken = default)
     {
-        var reservation = await context.Reservations
-            .SingleOrDefaultAsync(item => item.Id == reservationId, cancellationToken);
+        var reservation = await reservationRepository.GetAsync(reservationId, cancellationToken);
         if (reservation is null)
             return OperationResult<ReservationResponse>.Failure(
                 OperationError.NotFound, "A reserva informada não foi encontrada.");
@@ -74,24 +66,19 @@ public sealed class ReservationService(ReunioesDbContext context)
 
         var startTime = request.StartTime!.Value;
         var endTime = request.EndTime!.Value;
-
         var intervalError = ValidateInterval(startTime, endTime);
         if (intervalError is not null)
             return OperationResult<ReservationResponse>.Failure(OperationError.Validation, intervalError);
 
-        var hasConflict = await HasConflictAsync(
-            reservation.RoomId,
-            startTime,
-            endTime,
-            cancellationToken,
-            reservation.Id);
-        if (hasConflict)
+        if (startTime <= DateTime.Now)
             return OperationResult<ReservationResponse>.Failure(
-                OperationError.Conflict, "Já existe outra reserva sobreposta para esta sala.");
+                OperationError.Validation, "A nova data da reserva deve estar no futuro.");
 
         reservation.StartTime = startTime;
         reservation.EndTime = endTime;
-        await context.SaveChangesAsync(cancellationToken);
+        if (!await reservationRepository.RescheduleIfAvailableAsync(reservation, cancellationToken))
+            return OperationResult<ReservationResponse>.Failure(
+                OperationError.Conflict, "Já existe outra reserva sobreposta para esta sala.");
 
         return OperationResult<ReservationResponse>.Success(ToResponse(reservation));
     }
@@ -100,34 +87,26 @@ public sealed class ReservationService(ReunioesDbContext context)
         Guid reservationId,
         CancellationToken cancellationToken = default)
     {
-        var reservation = await context.Reservations
-            .SingleOrDefaultAsync(item => item.Id == reservationId, cancellationToken);
+        var reservation = await reservationRepository.GetAsync(reservationId, cancellationToken);
         if (reservation is null)
             return OperationResult<ReservationResponse>.Failure(
                 OperationError.NotFound, "A reserva informada não foi encontrada.");
 
-        var response = ToResponse(reservation);
-        context.Reservations.Remove(reservation);
-        await context.SaveChangesAsync(cancellationToken);
-
-        return OperationResult<ReservationResponse>.Success(response);
+        await reservationRepository.DeleteAsync(reservationId, cancellationToken);
+        return OperationResult<ReservationResponse>.Success(ToResponse(reservation));
     }
 
-    private Task<bool> HasConflictAsync(
-        Guid roomId,
-        DateTime startTime,
-        DateTime endTime,
-        CancellationToken cancellationToken,
-        Guid? ignoredReservationId = null) =>
-        context.Reservations.AnyAsync(reservation =>
-            reservation.RoomId == roomId &&
-            (!ignoredReservationId.HasValue || reservation.Id != ignoredReservationId.Value) &&
-            reservation.StartTime < endTime &&
-            reservation.EndTime > startTime,
-            cancellationToken);
+    public async Task<RecentReservationsResponse> GetRecentReservationsAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var to = DateTime.UtcNow;
+        var from = to.AddDays(-7);
+        var totalCount = await reservationRepository.CountCreatedBetweenAsync(from, to, cancellationToken);
+        return new RecentReservationsResponse(from, to, totalCount);
+    }
 
     private static OperationResult<ReservationResponse> InvalidRequest(
-        IReadOnlyList<System.ComponentModel.DataAnnotations.ValidationResult> validationErrors)
+        IReadOnlyList<ValidationResult> validationErrors)
     {
         var message = string.Join(" ", validationErrors
             .Select(error => error.ErrorMessage)

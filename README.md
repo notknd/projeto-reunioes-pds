@@ -1,36 +1,60 @@
 # Sistema de Gerenciamento de Salas de Reunião
 
-API em .NET 8 para gerenciar salas e reservas. A aplicação usa SQLite por padrão no desenvolvimento local e também pode usar PostgreSQL via Docker Compose.
+API em .NET 8 para gerenciar salas e reservas. A aplicação usa SQL parametrizado com ADO.NET e SQLite local.
 
-## Requisitos
+## Organização
 
-- .NET 8 SDK
-- Docker Compose (para usar PostgreSQL)
+- `Reunioes.Api`: apresentação HTTP (Minimal APIs) e configuração da aplicação.
+- `Reunioes.Negocio`: serviços, validações e regras de horários/conflitos.
+- `Reunioes.Dados`: entidades, conexão e repositórios com comandos SQL parametrizados.
 
-## Executar com SQLite
+Os repositórios abrem conexões e usam parâmetros para enviar valores ao banco. A criação e o reagendamento verificam conflitos e gravam a alteração dentro de uma transação.
 
-```bash
-dotnet run --project Reunioes.Api
-```
+## Executar localmente
 
-O banco SQLite é criado no arquivo `reunioes.db`. O provedor padrão pode ser configurado por `Database:Provider` e `ConnectionStrings:DefaultConnection`.
-
-## Executar com PostgreSQL
-
-Copie `.env.example` para `.env`, altere a senha local e inicie o banco:
+Requisito: .NET 8 SDK. Não é necessário instalar ou iniciar um servidor de banco de dados.
 
 ```bash
-docker compose up -d postgres
+dotnet restore .\Reunioes.slnx
+dotnet run --project .\Reunioes.Api\Reunioes.Api.csproj --launch-profile http
 ```
 
-No terminal que executa a API, configure as variáveis de ambiente correspondentes e inicie:
-
-```bash
-$env:Database__Provider = "PostgreSQL"
-$env:ConnectionStrings__DefaultConnection = "Host=localhost;Port=5432;Database=reunioes;Username=reunioes;Password=sua-senha-local"
-dotnet run --project Reunioes.Api
-```
-
-No Linux/macOS, use `export` no lugar de `$env:`. Não armazene credenciais reais no repositório. Para voltar ao SQLite, use `Database__Provider=SQLite` e `ConnectionStrings__DefaultConnection="Data Source=reunioes.db"`.
+Abra `http://localhost:5100/swagger` para consultar e executar os endpoints. O SQLite cria o arquivo `reunioes.db` automaticamente ao iniciar a API.
 
 A documentação Swagger fica disponível em `/swagger` no ambiente de desenvolvimento.
+
+## Endpoints
+
+### Salas
+
+| Método e rota | Ação |
+| --- | --- |
+| `POST /api/rooms` | Cadastra uma sala (`name`, `floor`, `capacity`). |
+| `GET /api/rooms/{roomId}` | Consulta uma sala. |
+| `PUT /api/rooms/{roomId}` | Atualiza nome, andar e capacidade. |
+| `DELETE /api/rooms/{roomId}` | Exclui a sala se não houver reservas vinculadas. |
+| `GET /api/rooms?page=1&name=Sala` | Lista 10 salas por página, filtra pelo nome e ordena por andar crescente. |
+| `GET /api/rooms/availability?startDate=2026-11-14&endDate=2026-11-15` | Retorna horas livres de cada sala no período, contando as datas inicial e final e o expediente das 08:00 às 19:00. |
+
+### Reservas
+
+| Método e rota | Ação |
+| --- | --- |
+| `POST /api/reservations` | Cria uma reserva. |
+| `PUT /api/reservations/{reservationId}` | Reagenda uma reserva futura. |
+| `DELETE /api/reservations/{reservationId}` | Cancela uma reserva. |
+| `GET /api/metrics/reservations/last-7-days` | Conta reservas criadas nos últimos sete dias; o intervalo retornado usa UTC. |
+
+Exemplo de criação (substitua `roomId` pelo identificador retornado ao criar a sala):
+
+```json
+{
+  "roomId": "00000000-0000-0000-0000-000000000000",
+  "startTime": "2026-11-16T10:00:00",
+  "endTime": "2026-11-16T11:00:00"
+}
+```
+
+As reservas precisam começar depois das 08:00 e terminar antes das 19:00, no mesmo dia. Horários adjacentes são aceitos; sobreposição na mesma sala retorna `409 Conflict`. Erros de validação retornam `400 Bad Request` e recursos inexistentes retornam `404 Not Found`.
+
+O banco é criado automaticamente ao iniciar a API. `schema.sql` contém o script de criação das tabelas SQLite.

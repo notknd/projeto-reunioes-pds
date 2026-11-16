@@ -20,7 +20,11 @@ public static class ReservationEndpoints
         })
         .WithName("CreateReservation")
         .WithTags("Reservas")
-        .WithSummary("Cria uma reserva para uma sala.");
+        .WithSummary("Cria uma reserva para uma sala dentro do expediente e sem sobreposição.")
+        .Produces<ReservationResponse>(StatusCodes.Status201Created)
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict);
 
         endpoints.MapPut("/api/reservations/{reservationId:guid}", async (
             Guid reservationId,
@@ -35,7 +39,11 @@ public static class ReservationEndpoints
         })
         .WithName("RescheduleReservation")
         .WithTags("Reservas")
-        .WithSummary("Reagenda uma reserva futura.");
+        .WithSummary("Reagenda uma reserva futura, revalidando expediente e conflitos.")
+        .Produces<ReservationResponse>()
+        .ProducesProblem(StatusCodes.Status400BadRequest)
+        .ProducesProblem(StatusCodes.Status404NotFound)
+        .ProducesProblem(StatusCodes.Status409Conflict);
 
         endpoints.MapDelete("/api/reservations/{reservationId:guid}", async (
             Guid reservationId,
@@ -49,7 +57,18 @@ public static class ReservationEndpoints
         })
         .WithName("CancelReservation")
         .WithTags("Reservas")
-        .WithSummary("Cancela uma reserva existente.");
+        .WithSummary("Cancela uma reserva existente.")
+        .Produces<ReservationResponse>()
+        .ProducesProblem(StatusCodes.Status404NotFound);
+
+        endpoints.MapGet("/api/metrics/reservations/last-7-days", async (
+            ReservationService service,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await service.GetRecentReservationsAsync(cancellationToken)))
+        .WithName("GetRecentReservations")
+        .WithTags("Métricas")
+        .WithSummary("Conta as reservas criadas nos últimos 7 dias; o intervalo é retornado em UTC.")
+        .Produces<RecentReservationsResponse>();
 
         return endpoints;
     }

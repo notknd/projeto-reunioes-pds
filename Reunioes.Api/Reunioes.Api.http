@@ -1,6 +1,17 @@
 @Reunioes.Api_HostAddress = http://localhost:5100
 
-GET {{Reunioes.Api_HostAddress}}/weatherforecast/
+### Criar sala
+POST {{Reunioes.Api_HostAddress}}/api/rooms
+Content-Type: application/json
+
+{
+  "name": "Sala 1",
+  "floor": 1,
+  "capacity": 8
+}
+
+###
+GET {{Reunioes.Api_HostAddress}}/api/rooms?page=1&name=Sala
 Accept: application/json
 
 ###

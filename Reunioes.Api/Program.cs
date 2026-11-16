@@ -1,6 +1,6 @@
-using Microsoft.EntityFrameworkCore;
 using Reunioes.Api.Endpoints;
-using Reunioes.Dados.Context;
+using Reunioes.Dados.Conexao;
+using Reunioes.Dados.Repositorios;
 using Reunioes.Negocio.Servicos;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -8,22 +8,17 @@ var builder = WebApplication.CreateBuilder(args);
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-var databaseProvider = builder.Configuration["Database:Provider"] ?? "SQLite";
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? "Data Source=reunioes.db";
 
-builder.Services.AddDbContext<ReunioesDbContext>(options =>
-{
-    if (databaseProvider.Equals("PostgreSQL", StringComparison.OrdinalIgnoreCase))
-        options.UseNpgsql(connectionString);
-    else if (databaseProvider.Equals("SQLite", StringComparison.OrdinalIgnoreCase))
-        options.UseSqlite(connectionString);
-    else
-        throw new InvalidOperationException(
-            $"Provedor de banco de dados '{databaseProvider}' não suportado. Use SQLite ou PostgreSQL.");
-});
+builder.Services.AddSingleton(new SqliteConnectionFactory(connectionString));
+builder.Services.AddScoped<DatabaseInitializer>(services => new DatabaseInitializer(
+    services.GetRequiredService<SqliteConnectionFactory>()));
+builder.Services.AddScoped<RoomRepository>();
+builder.Services.AddScoped<ReservationRepository>();
 
 builder.Services.AddScoped<ReservationService>();
+builder.Services.AddScoped<RoomService>();
 
 var app = builder.Build();
 
@@ -34,6 +29,10 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
+app.MapRoomEndpoints();
 app.MapReservationEndpoints();
+
+await using (var scope = app.Services.CreateAsyncScope())
+    await scope.ServiceProvider.GetRequiredService<DatabaseInitializer>().InitializeAsync();
 
 app.Run();
